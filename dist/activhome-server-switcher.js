@@ -1,6 +1,10 @@
 // activhome-server-switcher.js
 // Activhome Server Switcher — custom Lovelace card (HACS)
 // Includes a Lovelace UI editor to configure sites without YAML (critical for kiosk usage).
+//
+// Changes (focus + UX):
+// - Fix instant focus loss in editor by avoiding full re-render on every keystroke.
+// - Display prefers friendly name (subtitle) and makes URL display optional via `show_url` (default: false).
 
 (() => {
   const CARD_TAG = "activhome-server-switcher";
@@ -13,6 +17,7 @@
     open_mode: "same_tab", // same_tab | new_tab
     columns: null, // number | null (auto)
     dense: false,
+    show_url: false, // show host/path under each site (optional)
     sites: [],
   };
 
@@ -62,8 +67,9 @@
         title: "Serveurs",
         confirm: true,
         open_mode: "same_tab",
+        show_url: false,
         sites: [
-          { name: "Maison", url: "https://maison.example.com/lovelace/accueil", subtitle: "Prod" },
+          { name: "Maison", url: "https://maison.example.com/lovelace/accueil", subtitle: "Production" },
           { name: "Seed", url: "https://seed.example.com/lovelace/accueil", subtitle: "Test" },
         ],
       };
@@ -91,12 +97,14 @@
 
       const open_mode = config.open_mode === "new_tab" ? "new_tab" : "same_tab";
       const columns = Number.isFinite(Number(config.columns)) ? Math.max(1, Math.min(6, Number(config.columns))) : null;
+      const show_url = !!config.show_url;
 
       this._config = {
         ...DEFAULTS,
         ...config,
         open_mode,
         columns,
+        show_url,
         sites: normalized,
       };
 
@@ -165,7 +173,10 @@
           const host = hostOf(s.url);
           const isActive = host && host === currentHost;
           const path = pathnameOf(s.url);
-          const subtitle = s.subtitle || "";
+
+          // Prefer friendly name (subtitle). If absent, fall back to host.
+          const friendly = s.subtitle || "";
+          const secondary = friendly ? friendly : host;
 
           return `
             <button class="site ${isActive ? "active" : ""}" data-idx="${idx}" type="button">
@@ -174,10 +185,13 @@
                 ${isActive ? `<span class="badge">ACTIF</span>` : ""}
               </div>
               <div class="line2">
-                <span class="host">${escapeHtml(host)}</span>
-                ${subtitle ? `<span class="sep">•</span><span class="sub">${escapeHtml(subtitle)}</span>` : ""}
+                <span class="secondary">${escapeHtml(secondary)}</span>
               </div>
-              ${path && path !== "/" ? `<div class="line3">${escapeHtml(path)}</div>` : ""}
+              ${
+                cfg.show_url
+                  ? `<div class="line3"><span class="host">${escapeHtml(host)}</span>${path && path !== "/" ? `<span class="sep">•</span><span class="path">${escapeHtml(path)}</span>` : ""}</div>`
+                  : ""
+              }
             </button>
           `;
         })
@@ -259,9 +273,11 @@
             gap: 6px;
             flex-wrap: wrap;
           }
+
+          .secondary { font-size: 12px; opacity: 0.86; }
           .sep { opacity: 0.6; }
           .host { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-          .line3 { opacity: 0.60; }
+          .path { opacity: 0.70; }
 
           @media (max-width: 420px) {
             .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -319,7 +335,7 @@
     _setValue(key, value) {
       this._config = { ...this._config, [key]: value };
       this._emitConfigChanged();
-      this._render();
+      // IMPORTANT: do NOT full re-render on keystrokes (prevents focus loss)
     }
 
     _setSite(idx, patch) {
@@ -327,7 +343,7 @@
       sites[idx] = { ...(sites[idx] || {}), ...patch };
       this._config = { ...this._config, sites };
       this._emitConfigChanged();
-      this._render();
+      // IMPORTANT: do NOT full re-render on keystrokes (prevents focus loss)
     }
 
     _addSite() {
@@ -369,13 +385,13 @@
             </label>
 
             <label>
-              URL
-              <input data-idx="${i}" data-field="url" value="${escapeHtml(s?.url ?? "")}" placeholder="https://.../lovelace/..." />
+              Friendly name (optional)
+              <input data-idx="${i}" data-field="subtitle" value="${escapeHtml(s?.subtitle ?? "")}" placeholder="Production / Test / Client ..." />
             </label>
 
             <label>
-              Subtitle (optional)
-              <input data-idx="${i}" data-field="subtitle" value="${escapeHtml(s?.subtitle ?? "")}" placeholder="Prod / Test" />
+              URL
+              <input data-idx="${i}" data-field="url" value="${escapeHtml(s?.url ?? "")}" placeholder="https://.../lovelace/..." />
             </label>
           </div>
         </div>
@@ -387,7 +403,7 @@
         <style>
           :host { display:block; padding: 8px 0; }
           .wrap { display:flex; flex-direction:column; gap: 12px; }
-          .row { display:flex; gap: 10px; align-items:center; }
+          .row { display:flex; gap: 10px; align-items:center; flex-wrap: wrap; }
           label { display:flex; flex-direction:column; gap: 6px; font-size: 12px; opacity: .9; }
           input, select {
             font: inherit;
@@ -431,7 +447,7 @@
           </label>
 
           <div class="row">
-            <label style="flex:1">
+            <label style="flex:1; min-width: 220px;">
               Open mode
               <select id="open_mode">
                 <option value="same_tab" ${cfg.open_mode === "same_tab" ? "selected" : ""}>same_tab (recommended)</option>
@@ -446,6 +462,14 @@
                 <option value="false" ${!cfg.confirm ? "selected" : ""}>false</option>
               </select>
             </label>
+
+            <label style="width:160px">
+              Show URL in card
+              <select id="show_url">
+                <option value="true" ${cfg.show_url ? "selected" : ""}>true</option>
+                <option value="false" ${!cfg.show_url ? "selected" : ""}>false</option>
+              </select>
+            </label>
           </div>
 
           <label>
@@ -454,7 +478,8 @@
           </label>
 
           <div class="muted">
-            Add your servers below. In kiosk mode, keep <b>open_mode = same_tab</b> to stay inside the Home Assistant app.
+            Add your servers below. The card display prefers the <b>Friendly name</b>. URLs are optional to display (toggle above),
+            but still required to switch.
           </div>
 
           ${sitesHtml}
@@ -463,16 +488,26 @@
         </div>
       `;
 
-      // Bind top-level fields
+      // Bind top-level fields (no rerender on input to avoid focus loss)
       root.getElementById("title")?.addEventListener("input", (e) => this._setValue("title", e.target.value));
       root.getElementById("confirm_text")?.addEventListener("input", (e) => this._setValue("confirm_text", e.target.value));
 
-      root.getElementById("open_mode")?.addEventListener("change", (e) => this._setValue("open_mode", e.target.value));
-      root.getElementById("confirm")?.addEventListener("change", (e) => this._setValue("confirm", e.target.value === "true"));
+      root.getElementById("open_mode")?.addEventListener("change", (e) => {
+        this._setValue("open_mode", e.target.value);
+        this._render(); // select change is safe; keep UI consistent
+      });
+      root.getElementById("confirm")?.addEventListener("change", (e) => {
+        this._setValue("confirm", e.target.value === "true");
+        this._render();
+      });
+      root.getElementById("show_url")?.addEventListener("change", (e) => {
+        this._setValue("show_url", e.target.value === "true");
+        this._render();
+      });
 
       root.getElementById("addSite")?.addEventListener("click", () => this._addSite());
 
-      // Bind site fields
+      // Bind site fields (no rerender on input to avoid focus loss)
       root.querySelectorAll("input[data-idx][data-field]").forEach((input) => {
         input.addEventListener("input", (e) => {
           const idx = Number(e.target.getAttribute("data-idx"));
@@ -481,7 +516,7 @@
         });
       });
 
-      // Bind remove
+      // Bind remove (rerender is intended)
       root.querySelectorAll("button[data-remove]").forEach((btn) => {
         btn.addEventListener("click", (e) => {
           const idx = Number(e.target.getAttribute("data-remove"));
