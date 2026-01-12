@@ -432,8 +432,17 @@
     }
 
     getCardSize() {
-      const n = this._config?.sites?.length || 1;
-      return Math.max(2, Math.ceil(n / 2));
+      const cfg = this._config || DEFAULTS;
+      const n = cfg?.sites?.length || 1;
+
+      // Home Assistant uses getCardSize() as a rough layout hint (masonry).
+      // If it's too small, cards below can overlap when our internal grid wraps.
+      // Use a conservative estimate: assume 2 columns unless user explicitly set 1.
+      const cols = cfg.columns ? Math.max(1, Math.min(6, Number(cfg.columns))) : 2;
+      const rows = Math.ceil(n / cols);
+
+      // +1 for header/margins
+      return Math.max(2, rows + 1);
     }
 
     _navigate(url) {
