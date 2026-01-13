@@ -1,47 +1,55 @@
-﻿# Activhome Server Switcher
+# Activhome Server Switcher
 
-Activhome Server Switcher is a custom Lovelace card for Home Assistant that allows switching
-between multiple Home Assistant instances directly from a dashboard.
+**Activhome Server Switcher** is a custom Home Assistant Lovelace card designed to seamlessly switch between Home Assistant instances.
 
-It is designed for kiosk and wall-mounted setups where access to the sidebar,
-Companion app server list, or gestures is not desirable.
+The card automatically adapts navigation depending on the device:
+- **Desktop / browser** → classic HTTP(S) URL
+- **iPad / tablet (Home Assistant Companion)** → `homeassistant://navigate/...`
 
-## Key features
+It provides a polished UI, a stable visual editor, and full compatibility with dark mode.
 
-- Switch between multiple Home Assistant servers from a Lovelace card
-- Works inside the Home Assistant app (iOS / Android) and kiosk mode
-- Same-tab navigation (no external browser)
-- Optional confirmation before switching
-- Highlights the current server
-- Minimal, sober UI compatible with Activhome dashboards
+---
+
+## Features
+
+- Automatic device-based navigation (desktop vs Companion)
+- Fully visual editor with stable input focus
+- Dark / light mode compatible dropdowns and inputs
+- Active server detection with visual badge
+- Consistent card height (edition / display)
+- Custom style presets (Activhome, glass, neon, etc.)
+- Optional confirmation before switching server
+- Optional display of full target URL
+- Default grid size (`rows: 2`) for consistent layouts
+
+---
 
 ## Installation
 
-Install via HACS as a custom repository:
+1. Copy `activhome-server-switcher.js` into:
+   ```
+   /config/www/
+   ```
 
-iouribecq/activhome-server-switcher
+2. Add the resource in Home Assistant:
+   - URL: `/local/activhome-server-switcher.js`
+   - Type: `Module`
 
-Then reload the dashboard resources.
+3. Add the card:
+   ```yaml
+   type: custom:activhome-server-switcher
+   ```
 
-## Usage
+---
 
-type: custom:activhome-server-switcher
-title: Serveurs
-confirm: true
-open_mode: same_tab
-sites:
-  - name: Maison
-    url: https://maison.example.com/lovelace/accueil
-    subtitle: Production
-  - name: Seed
-    url: https://seed.example.com/lovelace/accueil
-    subtitle: Test
+## Device behavior
 
-## Notes
+- **Desktop**: navigates using the configured desktop URL
+- **iPad / tablet**: opens the Home Assistant Companion app using `homeassistant://navigate`
 
-- This card does not bypass authentication.
-- Navigation remains inside the Home Assistant application when using same_tab.
+---
 
-## License
+## Status
 
-MIT
+✅ Stable – production ready  
+Built and validated in real-world Home Assistant dashboards.
