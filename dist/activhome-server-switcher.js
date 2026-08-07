@@ -1,5 +1,5 @@
 /* activhome-server-switcher.js
- *
+ * v1.2.2
  * Lovelace card: custom:activhome-server-switcher
  * Custom element: <activhome-server-switcher>
  *
