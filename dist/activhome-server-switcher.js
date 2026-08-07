@@ -478,8 +478,10 @@
         .top{ display:flex; align-items:center; justify-content:space-between; gap:10px; line-height:1; min-height: 18px; }
         .title{ font-size:14px; opacity:0.92; letter-spacing:0.2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .badge{ font-size:12px; line-height:12px; padding:4px 8px; border-radius:999px; background: rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.15); white-space:nowrap; flex:0 0 auto; }
+        .content{ position:relative; min-height:48px; padding-right:42px; }
         .name{ font-size:20px; line-height:20px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
         .subtitle{ font-size:13px; line-height:16px; opacity:0.92; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+        .tap-icon{ position:absolute; right:0; bottom:0; width:32px; height:32px; color:#fff; --mdc-icon-size:32px; }
         .url{ font-size:12px; line-height:14px; opacity:0.75; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
         ha-card, .wrap, .title, .name, .subtitle, .url { color: var(--primary-text-color); }
@@ -495,9 +497,12 @@
               <div class="title" title="${this._escapeAttr(title)}">${this._escapeHtml(title)}</div>
               ${active ? `<div class="badge">Actif</div>` : ``}
             </div>
-            <div class="name" title="${this._escapeAttr(name)}">${this._escapeHtml(name)}</div>
-            ${subtitle ? `<div class="subtitle" title="${this._escapeAttr(subtitle)}">${this._escapeHtml(subtitle)}</div>` : ``}
-            ${cfg.show_full_url && fullUrlToShow ? `<div class="url" title="${this._escapeAttr(fullUrlToShow)}">${this._escapeHtml(fullUrlToShow)}</div>` : ``}
+            <div class="content">
+              <div class="name" title="${this._escapeAttr(name)}">${this._escapeHtml(name)}</div>
+              ${subtitle ? `<div class="subtitle" title="${this._escapeAttr(subtitle)}">${this._escapeHtml(subtitle)}</div>` : ``}
+              ${cfg.show_full_url && fullUrlToShow ? `<div class="url" title="${this._escapeAttr(fullUrlToShow)}">${this._escapeHtml(fullUrlToShow)}</div>` : ``}
+              <ha-icon class="tap-icon" icon="mdi:gesture-tap"></ha-icon>
+            </div>
           </div>
         </ha-card>
       `;
@@ -577,7 +582,7 @@
         @media (max-width: 520px){ .row2{ grid-template-columns: 1fr; } }
 
         label{ display:block; font-size:12px; opacity:0.85; margin:0 0 6px 2px; }
-        input, select{
+        input{
           width:100%; box-sizing:border-box;
           padding: 10px 12px;
           border-radius: 10px;
@@ -587,8 +592,9 @@
           outline: none;
           font: inherit;
         }
-        select{ appearance: auto; }
-        input:focus, select:focus{ border-color: rgba(255, 193, 7, 0.65); box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.15); }
+        input:focus{ border-color: rgba(255, 193, 7, 0.65); box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.15); }
+        ha-select{ width:100%; display:block; }
+        ha-select::part(menu){ background: var(--card-background-color); color: var(--primary-text-color); }
 
         .checkbox-row{ display:flex; align-items:center; gap: 10px; }
         .checkbox-row input[type="checkbox"]{ width: 18px; height: 18px; padding:0; margin:0; }
@@ -612,15 +618,15 @@
             ${field("title", "Titre", `<input id="title" type="text" />`)}
 
             <div class="row2">
-              ${field("style_preset", "Style preset", `<select id="style_preset"></select>`)}
+              ${field("style_preset", "Style preset", `<ha-select id="style_preset"></ha-select>`)}
               ${field("accent_color", "Accent (optionnel)", `<input id="accent_color" type="text" placeholder="#00ffff" />`)}
             </div>
 
-            ${field("theme", "Thème (HA)", `<select id="theme"></select>`)}
-            ${field("open_mode", "Ouverture", `<select id="open_mode">
-              <option value="same_tab">Même onglet</option>
-              <option value="new_tab">Nouvel onglet</option>
-            </select>`)}
+            ${field("theme", "Thème (HA)", `<ha-select id="theme"></ha-select>`)}
+            ${field("open_mode", "Ouverture", `<ha-select id="open_mode">
+              <mwc-list-item value="same_tab">Même onglet</mwc-list-item>
+              <mwc-list-item value="new_tab">Nouvel onglet</mwc-list-item>
+            </ha-select>`)}
 
             <div class="checkbox-row">
               <input id="confirm" type="checkbox" />
@@ -666,7 +672,7 @@
       this._els.server_tablet_path = q("server_tablet_path");
 
       // Populate preset options once
-      this._els.style_preset.innerHTML = STYLE_PRESETS.map((p) => `<option value="${p}">${p}</option>`).join("");
+      this._els.style_preset.innerHTML = STYLE_PRESETS.map((p) => `<mwc-list-item value="${p}">${p}</mwc-list-item>`).join("");
 
       // Attach listeners once (NO rerender => stable focus)
       this._els.title.addEventListener("input", () => this._update("title", this._els.title.value));
@@ -702,7 +708,7 @@
       const themes = Object.keys(themesObj).sort((a, b) => a.localeCompare(b));
 
       // Preserve selection if possible
-      const options = [`<option value="">(aucun)</option>`].concat(themes.map((t) => `<option value="${this._escapeAttr(t)}">${this._escapeHtml(t)}</option>`));
+      const options = [`<mwc-list-item value="">(aucun)</mwc-list-item>`].concat(themes.map((t) => `<mwc-list-item value="${this._escapeAttr(t)}">${this._escapeHtml(t)}</mwc-list-item>`));
       themeSelect.innerHTML = options.join("");
 
       // Restore selection
