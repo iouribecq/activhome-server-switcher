@@ -1,5 +1,5 @@
 /* activhome-server-switcher.js
- * v1.2.3
+ * v1.2.4
  * Lovelace card: custom:activhome-server-switcher
  * Custom element: <activhome-server-switcher>
  *
@@ -313,28 +313,39 @@
     }
   }
 
-  function isActiveServerByHost(desktopUrl, hass) {
+  function getCompanionServerName(tabletPath) {
+    const raw = normalizeString(tabletPath).trim();
+    if (!raw) return "";
+
+    try {
+      const u = new URL(raw);
+      return normalizeString(u.searchParams.get("server")).trim();
+    } catch (_e) {
+      const match = raw.match(/[?&]server=([^&#]+)/i);
+      if (!match) return "";
+      try {
+        return decodeURIComponent(match[1].replace(/\+/g, " ")).trim();
+      } catch (_err) {
+        return match[1].trim();
+      }
+    }
+  }
+
+  function isActiveServer(desktopUrl, tabletPath, hass) {
+    // Desktop/browser access: keep the original host comparison.
     const desktop = safeParseUrl(desktopUrl);
-    if (!desktop) return false;
+    if (desktop) {
+      const desktopHost = normalizeString(desktop.host).trim().toLowerCase();
+      const currentHost = normalizeString(window.location.host).trim().toLowerCase();
+      if (desktopHost && desktopHost === currentHost) return true;
+    }
 
-    const desktopHost = normalizeString(desktop.host).trim().toLowerCase();
-    const currentHost = normalizeString(window.location.host).trim().toLowerCase();
+    // Companion/tablet access:
+    // compare ?server=... from tablet_path with the current HA instance location_name.
+    const companionServer = getCompanionServerName(tabletPath).toLowerCase();
+    const locationName = normalizeString(hass?.config?.location_name).trim().toLowerCase();
 
-    // Direct match: the browser is already using the configured desktop URL.
-    if (desktopHost && desktopHost === currentHost) return true;
-
-    // Home Assistant can expose both URLs of the CURRENT instance.
-    // This lets the card stay "Actif" whether HA is opened locally or remotely.
-    const instanceUrls = [
-      hass?.config?.external_url,
-      hass?.config?.internal_url,
-    ];
-
-    return instanceUrls.some((url) => {
-      const parsed = safeParseUrl(normalizeString(url).trim());
-      if (!parsed) return false;
-      return normalizeString(parsed.host).trim().toLowerCase() === desktopHost;
-    });
+    return !!(companionServer && locationName && companionServer === locationName);
   }
 
   function defaultConfig() {
@@ -470,8 +481,8 @@
       const name = normalizeString(s.name);
       const subtitle = normalizeString(s.subtitle);
 
-      const { target, desktopUrl } = this._resolveTargetUrl();
-      const active = isActiveServerByHost(desktopUrl, this._hass);
+      const { target, desktopUrl, tabletPath } = this._resolveTargetUrl();
+      const active = isActiveServer(desktopUrl, tabletPath, this._hass);
       const fullUrlToShow = normalizeString(target);
 
       const themeAttr = normalizeString(cfg.theme).trim();
