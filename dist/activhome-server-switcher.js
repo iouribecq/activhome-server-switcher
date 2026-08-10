@@ -1,5 +1,5 @@
 /* activhome-server-switcher.js
- * v1.2.2
+ * v1.2.3
  * Lovelace card: custom:activhome-server-switcher
  * Custom element: <activhome-server-switcher>
  *
@@ -313,10 +313,28 @@
     }
   }
 
-  function isActiveServerByHost(desktopUrl) {
-    const u = safeParseUrl(desktopUrl);
-    if (!u) return false;
-    return u.host === window.location.host;
+  function isActiveServerByHost(desktopUrl, hass) {
+    const desktop = safeParseUrl(desktopUrl);
+    if (!desktop) return false;
+
+    const desktopHost = normalizeString(desktop.host).trim().toLowerCase();
+    const currentHost = normalizeString(window.location.host).trim().toLowerCase();
+
+    // Direct match: the browser is already using the configured desktop URL.
+    if (desktopHost && desktopHost === currentHost) return true;
+
+    // Home Assistant can expose both URLs of the CURRENT instance.
+    // This lets the card stay "Actif" whether HA is opened locally or remotely.
+    const instanceUrls = [
+      hass?.config?.external_url,
+      hass?.config?.internal_url,
+    ];
+
+    return instanceUrls.some((url) => {
+      const parsed = safeParseUrl(normalizeString(url).trim());
+      if (!parsed) return false;
+      return normalizeString(parsed.host).trim().toLowerCase() === desktopHost;
+    });
   }
 
   function defaultConfig() {
@@ -453,7 +471,7 @@
       const subtitle = normalizeString(s.subtitle);
 
       const { target, desktopUrl } = this._resolveTargetUrl();
-      const active = isActiveServerByHost(desktopUrl);
+      const active = isActiveServerByHost(desktopUrl, this._hass);
       const fullUrlToShow = normalizeString(target);
 
       const themeAttr = normalizeString(cfg.theme).trim();
